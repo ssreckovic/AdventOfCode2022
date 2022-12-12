@@ -45,6 +45,7 @@
     "xutility": "cpp",
     "unordered_set": "cpp",
     "list": "cpp",
-    "xhash": "cpp"
+    "xhash": "cpp",
+    "queue": "cpp"
   }
 }
