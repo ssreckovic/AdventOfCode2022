@@ -13,6 +13,10 @@ struct Point
       return (x == rhs.x) && (y == rhs.y);
   }
 
+  bool operator!=(const Point &rhs) const{
+      return (x != rhs.x) || (y != rhs.y);
+  }
+
   int dist (Point &p)
   {
     return abs(x - p.x) + abs(y - p.y);
@@ -119,7 +123,7 @@ MinMaxPair readInput (std::vector<Sensor> &sensorSet, std::string &filename)
   return { minXVal, maxXVal };
 }
 
-std::vector<Sensor> findIntersectingSensors(std::vector<Sensor> &sensorSet, const int rowNum)
+std::vector<Sensor> findSensorsIntersectingWithRow(std::vector<Sensor> &sensorSet, const int rowNum)
 {
   std::vector<Sensor> intersectingSensors;
   for (auto& sensor : sensorSet)
@@ -135,27 +139,13 @@ std::vector<Sensor> findIntersectingSensors(std::vector<Sensor> &sensorSet, cons
   return intersectingSensors;
 }
 
-int findMissingIndex(std::unordered_set<int> &coveredIndicies, const int maxValue)
+// Find the amount of a given row that is covered. Had a better solution before that was way off
+// but using the set works, even if it slows it down significantly.
+int findRowCoverage(std::vector<Sensor> &sensorSet, const int rowNum)
 {
-  for (int i = 1; i < maxValue; i++)
-  {
-    if (coveredIndicies.count(i) == 0)
-    {
-      return i;
-    }
-  }
-  // for (const auto& elem : coveredIndicies)
-  // {
-  //   std::cout << elem << std::endl;
-  // }
-  return 0;
-}
-
-int findRowCoverage(std::vector<Sensor> &sensorSet, const int rowNum, const int maxValue) // const MinMaxPair &xRange,
-{
-  std::vector<Sensor> intersectingSensors = findIntersectingSensors(sensorSet, rowNum);
+  std::vector<Sensor> intersectingSensors = findSensorsIntersectingWithRow(sensorSet, rowNum);
   std::unordered_set<int> coveredIndicies;
-  // std::unordered_set<Point, pointHash> beaconCount;
+  std::unordered_set<Point, pointHash> beaconCount;
 
   for (auto& sensor : intersectingSensors)
   {
@@ -163,132 +153,85 @@ int findRowCoverage(std::vector<Sensor> &sensorSet, const int rowNum, const int 
 
     for (int i = (-1 * triangleHalfBaseWidth); i <= triangleHalfBaseWidth; i++)
     {
-      if (sensor.position.x + i > 0 && sensor.position.x + i <= maxValue)
-      {
-        coveredIndicies.insert(sensor.position.x + i);
-      }
+      coveredIndicies.insert(sensor.position.x + i);
     }
 
-    // if (sensor.nearestBeacon.y == rowNum)
-    // {
-    //   beaconCount.insert(sensor.nearestBeacon);
-    // }
+    if (sensor.nearestBeacon.y == rowNum)
+    {
+      beaconCount.insert(sensor.nearestBeacon);
+    }
   }
-  // int total = coveredIndicies.size();// - beaconCount.size();
-  // std::cout << "Total Indecides covered: " << total << std::endl;
-  if (coveredIndicies.size() < maxValue)
-  {
-    std::cout << "Looking for index" << std::endl;
-    return findMissingIndex(coveredIndicies, maxValue);
-  }
+  int total = coveredIndicies.size() - beaconCount.size();
+  std::cout << "Total Indicides covered: " << total << std::endl;
+
   return coveredIndicies.size();
 
-  // Solution below seemed to be off slightly even though it is faster
-  
-  // std::vector<char> mysteryRow((xRange.max - xRange.min + 1), '.');
-  // int rowCoverage = 0;
-  // std::cout << xRange.max << " , " << xRange.min << std::endl;
-  // std::cout << "Size of row: " <<  mysteryRow.size() << std::endl;
-  // for (auto &sensor : intersectingSensors)
-  // {
-  //   if (sensor.nearestBeacon.y == rowNum)
-  //   {
-  //     mysteryRow[sensor.nearestBeacon.x + 2] = 'B';
-  //   }
-
-  //   int triangleHalfBaseWidth = sensor.beaconDistance - sensor.yDistToMysteryRow;
-
-  //   for (int i = (-1 * triangleHalfBaseWidth); i <= triangleHalfBaseWidth; i++)
-  //   {
-  //     int index = (sensor.position.x - (xRange.min)) + i;
-
-  //     if (index >= mysteryRow.size()) { continue; }
-
-  //     if (mysteryRow[index] == '.')
-  //     {
-  //       mysteryRow[index] = '#';
-  //       rowCoverage++;
-  //     }
-  //   }
-  // }
-  // for (auto& i : mysteryRow)
-  // {
-  //   std::cout << i;
-  // }
-  // std::cout << std::endl;
-  
-  // std::cout << rowCoverage << std::endl;
 }
 
-
-void findMissingBeacon(std::vector<Sensor> &sensorSet, int dimension)
+std::vector<Point> findPerimeterPoints(Sensor &sensor, const int maxDimension)
 {
-  for (int i = 0; i < dimension + 1; i++)
-  {
-    if (i == 100000 || i == 200000 || i == 500000 || i == 1000000 || i == 2000000)
-    {
-      std::cout << "Count :" << i << std::endl;
-    }
-    int val = findRowCoverage(sensorSet, i, dimension);
+  std::vector<Point> perimeter;
 
-    if (val < dimension)
+  for (int i = (-1 * (sensor.beaconDistance + 1)); i <= (sensor.beaconDistance + 1); i++)
+  {
+    int yPos = (sensor.beaconDistance + 1) - abs(i);
+
+    if (sensor.position.x + i < 0 || sensor.position.x + i > maxDimension)
     {
-      std::cout << "Done! " << val << "," << i << std::endl;
-      break;
+      continue;
+    }
+
+    if (sensor.position.y + yPos <= maxDimension) 
+    {
+      perimeter.push_back({ sensor.position.x + i, sensor.position.y + yPos });
+    }
+
+    // yPos != 0 Avoid duplicates
+    if (sensor.position.y - yPos >= 0)
+    {
+      perimeter.push_back({ sensor.position.x + i, sensor.position.y - yPos });
     }
   }
+
+  return perimeter;
 }
-// void setSensorCoverage(std::vector<std::vector<char>> &coverageMatrix, const Sensor &sensor)
-// {
-//   for (int i = sensor.beaconDistance; i >= (-1 * sensor.beaconDistance); i--)
-//   {
-//     int halfWidth = sensor.beaconDistance - abs(i); 
 
-//     for (int j = (-1 * halfWidth); j <= halfWidth; j++)
-//     {
-//       int xPos = sensor.position.x + j;
-//       int yPos = sensor.position.y + i;
-//       if ( xPos >= coverageMatrix[0].size() || yPos >= coverageMatrix.size() || xPos < 0 || yPos < 0 ) { continue; }
-  
-//       coverageMatrix[yPos][xPos] = '#';
-//     }
-//   }
-//   coverageMatrix[sensor.position.y][sensor.position.x] = 'S';
-// }
+bool hasPointSensorIntersection(Point &point, std::vector<Sensor> &sensorSet, Sensor &currentSensor)
+{
+  for (auto& sensor : sensorSet)
+  {
+    if (sensor.position != currentSensor.position && sensor.position.dist(point) <= sensor.beaconDistance)
+    {
+      return true;
+    }
+  }
 
-// Point findDot (std::vector<std::vector<char>> &coverageMatrix)
-// {
-//   for (int i = 0; i < coverageMatrix.size(); i++)
-//   {
-//     for (int j = 0; j < coverageMatrix[0].size(); j++)
-//     {
-//       if (coverageMatrix[i][j] == '.')
-//       {
-//         return { j, i };
-//       }
-//     }
-//   }
+  return false;
+}
 
-//   return { 0 , 0};
-// }
+Point findHiddenBeacon (std::vector<Sensor> &sensorSet, const int maxDimension)
+{
+  // Loop through all sensors and find the points just on the outside of the sensor range
+  // Check those points against other sensors to see if there is any intersection
+  // If there is no intersection that is the hidden beacon
 
-// void coverEntireMap (std::vector<Sensor> &sensorSet, const int maxDimension)
-// {
-//   std::cout << "Start Coverage" << std::endl;
-//   std::vector<std::vector<char>> coverageMatrix (maxDimension, std::vector<char>(maxDimension ,'.'));
+  for (auto& sensor : sensorSet)
+  {
+    std::vector<Point> outsidePerimeterPoints = findPerimeterPoints(sensor, maxDimension);
 
-//   std::cout << "Done Initializing" << std::endl;
-//   for (int i = 0; i < sensorSet.size(); i++)
-//   {
-//     setSensorCoverage(coverageMatrix, sensorSet[i]);
-//     std::cout << "Done sensor " << i << "/" << sensorSet.size() << std::endl;
-//   }
-//   std::cout << "Finding Dot" << std::endl;
-//   Point dot = findDot(coverageMatrix);
+    for(auto& pt : outsidePerimeterPoints)
+    {
+      bool hasIntersection = hasPointSensorIntersection(pt, sensorSet, sensor);
 
-//   std::cout << dot.x << "," << dot.y << std::endl;
-//   // printMatrix(coverageMatrix);
-// }
+      if (!hasIntersection)
+      {
+        return pt;
+      }
+    }
+  }
+
+  return {0,0};
+}
 
 int main (int argc, char** argv)
 {
@@ -296,17 +239,19 @@ int main (int argc, char** argv)
   std::vector<Sensor> sensorSet;
   MinMaxPair xRange = readInput(sensorSet, filename);
 
-  // int rowNum = 10;
-  // int rowNum = 2000000;
-  // findRowCoverage(sensorSet, xRange, rowNum);
-  // int maxDimension = 21;
-  int maxDimension = 4000000 + 1;
-  findMissingBeacon(sensorSet, maxDimension);
-  // coverEntireMap(sensorSet, maxDimension);
+  std::cout << "Part 1" << std::endl;
+  // int rowNum = 10; // For sample input
+  int rowNum = 2000000;
+  findRowCoverage(sensorSet, rowNum);
   
-  // for (auto &sensor : sensorSet)
-  // {
-  //   printSensor(sensor);
-  // }
+  //Part 2
+  std::cout << "Part 2" << std::endl;
+  // int maxDimension = 21; // For sample input
+  int maxDimension = 4000001;
+  Point p = findHiddenBeacon(sensorSet, maxDimension);
+  std::cout << "This number is too big to show apperantly: " << std::endl;
+  std::cout << p.x << "," << p.y << std::endl;
+  std::cout << "Tuning Frequency: " << p.x * 4 << "000000 + " << p.y << std::endl;
 
+  return 0;
 }
