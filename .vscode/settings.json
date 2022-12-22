@@ -47,6 +47,7 @@
     "list": "cpp",
     "xhash": "cpp",
     "queue": "cpp",
-    "stack": "cpp"
+    "stack": "cpp",
+    "cctype": "cpp"
   }
 }
