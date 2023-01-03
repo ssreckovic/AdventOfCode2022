@@ -48,6 +48,8 @@
     "xhash": "cpp",
     "queue": "cpp",
     "stack": "cpp",
-    "cctype": "cpp"
+    "cctype": "cpp",
+    "set": "cpp",
+    "unordered_map": "cpp"
   }
 }
