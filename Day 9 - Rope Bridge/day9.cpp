@@ -18,12 +18,17 @@ struct point
     }
 
     point operator+(const point &other) const {
-      // return { (x + other.x) / (std::max(x + other.x , 1)) , (y + other.y) / (std::max(y + other.y , 1)) }; 
       return { (x + other.x) , (y + other.y) }; 
     }
 
-    float dist (const point &other) const {
-      return sqrtf((other.x - x)*(other.x - x) + (other.y - y)*(other.y - y));
+    point operator-(const point &other) const {
+      return { x - other.x, y - other.y };
+    }
+
+    void move(const point &dir)
+    {
+      x += dir.x == 0 ? dir.x : dir.x / abs(dir.x);
+      y += dir.y == 0 ? dir.y : dir.y / abs(dir.y);
     }
 
     int x;
@@ -79,14 +84,12 @@ int findPositionsNthTail (int numSegments, std::vector<Action> &actionSet)
   std::map<char, point> dirToVector = { {'U', { 0, 1 }}, {'D', { 0, -1 }}, {'L', { -1, 0 }}, {'R', { 1, 0 }} };
   std::unordered_set<point, pointHash> nthTailPoints;
   std::vector<point> ropePositions;
-  std::vector<point> prevMove;
 
   point headPos = { 0, 0 };
   point lastMove = { 0, 0 };
 
   for (int i = 0; i < numSegments; i++)
   {
-    prevMove.push_back({ 0, 0 });
     ropePositions.push_back({ 0, 0 });
   }
 
@@ -96,109 +99,25 @@ int findPositionsNthTail (int numSegments, std::vector<Action> &actionSet)
   {
     point directionVec = dirToVector.at(action.dir);
 
-    // std::cout << action.dir << " :: " << action.distance << std::endl;
     for (int i = 0; i < action.distance; i++)
     {
-      // Loop through rope segments
-      for (int j = 0; j < numSegments; j++)
+      ropePositions[0] = ropePositions[0] + directionVec;
+
+      for (int j = 1; j < numSegments; j++)
       {
-        if (j == 0)
+        point distance = ropePositions[j - 1] - ropePositions[j];
+
+        if (abs(distance.x) > 1 || abs(distance.y) > 1)
         {
-          // std::cout << "Action : " << action.dir << " " << i << std::endl;
-          // std::cout << "Prev POS :: " << ropePositions[j].x << "," << ropePositions[i].y << "   Direciton: " << directionVec.x << "," << directionVec.y << std::endl;
-          // std::cout << directionVec.x + ropePositions[j].x << " " << directionVec.y + ropePositions[j].y << std::endl;
-          // point temp = {ropePositions[j].x + directionVec.x ,  ropePositions[j].y + directionVec.y};
-          // std::cout << temp.x << "," << temp.y<< std::endl;
-          ropePositions[j] = ropePositions[j] + directionVec;
-          lastMove = directionVec;
-          
-          // lastMove = prevMove[j];
-          // std::cout << "POS :: " << ropePositions[j].x << "," << ropePositions[j].y << std::endl;
-          // std::cout << "H : (" << ropePositions[j].x <<  "," << ropePositions[j].y << ")" << std::endl;
-        }
-
-        else if (ropePositions[j].dist(ropePositions[j - 1]) >= 2)
-        {
-          ropePositions[j] = ropePositions[j] + prevMove[j - 1];
-          
-          prevMove[j] = prevMove[j - 1];
-          // prevMove[j - 1] = lastMove;
-          point temp = lastMove;
-          lastMove = prevMove[j - 1];
-          prevMove[j - 1] = temp;
-          // std::cout << "(" << ropePositions[j].x <<  "," << ropePositions[j].y << ")" << std::endl;
-          // prevMove[j - 1] = lastMove;
-          // lastMove = 
-          // lastMove = prevMove[j - 1];
-          // prevMove[j] = prevMove[j - 1];
-
-          if (j == numSegments - 1)
-          {
-            // std::cout << "POS :: " << ropePositions[j].x << "," << ropePositions[j].y << std::endl;
-            nthTailPoints.insert(ropePositions[j]);
-          }
-        }
-        else 
-        {
-          // std::cout << prevMove[j].x << " ," << prevMove[j].y << std::endl;
-          // prevMove[j] = prevMove[j] + prevMove[j - 1];
-          // std::cout << "(" << ropePositions[j].x <<  "," << ropePositions[j].y << ")" << std::endl;
-          prevMove[j - 1] = prevMove[j - 1] + lastMove;
-          
-          lastMove = { 0, 0 };
-        }
-  
+          ropePositions[j].move(distance); // This function uses just the direction of the vector and not the scalar values.
+        }  
       }
-      // std::cout << " " << std::endl;
-    }
-  }
-  numPositions = nthTailPoints.size();
-  return numPositions;
-}
-
-// Part 1
-int findNumUniqueTailPositions (std::vector<Action> &actionSet)
-{
-  int numPositions = 0;
-
-  point prevMove = { 0, 0 };
-  std::map<char, point> dirToVector = { {'U', { 0, 1 }}, {'D', { 0, -1 }}, {'L', { -1, 0 }}, {'R', { 1, 0 }} };
-  std::unordered_set<point, pointHash> tailPoints;
-
-  tailPoints.insert({ 0, 0 });
-
-  point headPos = { 0, 0 };
-  point tailPos = { 0, 0 };
-
-  // std::cout << (headPos.x + tailPos.x) / (std::max(headPos.x + tailPos.x , 1)) << ", " << (std::max(headPos.x + tailPos.x , 1)) << std::endl;
-  for (auto& action : actionSet)
-  {
-    point directionVec = dirToVector.at(action.dir);
-    // std::cout << directionVec.x << " , " << directionVec.y << std::endl;
-    for (int i = 0; i < action.distance; i++)
-    {
-      headPos = headPos + directionVec;
-
-      // check distance between head and tail, if > 2 move the tail
-      if (headPos.dist(tailPos) >= 2)
-      {
-        tailPos = tailPos + prevMove;
-        prevMove = directionVec;
-
-        tailPoints.insert(tailPos);
-      }
-      else
-      {
-        // when distance < 2, just keep adding the actions together until 
-        // the head moves far away and then update tail position with that new vector
-        prevMove = prevMove + directionVec;
-      }
-      // std::cout << "Head: (" << headPos.x << "," << headPos.y << ") :: Tail: (" << tailPos.x << "," << tailPos.y << ")" << std::endl;
+      nthTailPoints.insert(ropePositions[numSegments - 1]);
+      nthTailPoints.insert(ropePositions[numSegments - 1]);
     }
   }
 
-  numPositions = tailPoints.size();
-  return numPositions;
+  return nthTailPoints.size();
 }
 
 int main (int argc, char** argv)
@@ -208,7 +127,7 @@ int main (int argc, char** argv)
 
   actionSet = readInput(filename);
 
-  int part1 = findNumUniqueTailPositions(actionSet);
+  int part1 = findPositionsNthTail(2, actionSet);
   int part2 = findPositionsNthTail(10, actionSet);
   std::cout << part1 << std::endl;
   std::cout << part2 << std::endl;
